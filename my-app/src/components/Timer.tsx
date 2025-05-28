@@ -13,7 +13,8 @@ const Timer: React.FC<TimerProps> = ({ onStateChange }) => {
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   const formatTime = (timeInMillis: number) => {
-    const milliseconds = String(timeInMillis % 1000).padStart(3, '0').slice(0, 2); // Get first two digits for MS
+    // Display full three digits for milliseconds
+    const milliseconds = String(timeInMillis % 1000).padStart(3, '0');
     const seconds = String(Math.floor((timeInMillis / 1000) % 60)).padStart(2, '0');
     const minutes = String(Math.floor((timeInMillis / (1000 * 60)) % 60)).padStart(2, '0');
     return `${minutes}:${seconds}:${milliseconds}`;
@@ -64,7 +65,7 @@ const Timer: React.FC<TimerProps> = ({ onStateChange }) => {
   }, [isRunning, onStateChange]);
 
   return (
-    <div style={{ width: '100%', textAlign: 'center', fontSize: '10vw', fontFamily: 'monospace', overflowWrap: 'break-word' }}>
+    <div style={{ width: '100%', textAlign: 'center', fontSize: '10vw', fontFamily: '"Roboto Mono", monospace', overflowWrap: 'break-word' }}>
       {formatTime(time)}
     </div>
   );
