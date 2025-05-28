@@ -11,7 +11,7 @@ const Timer: React.FC<TimerProps> = ({ onStateChange }) => {
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
   const formatTime = (timeInMillis: number) => {
-    const milliseconds = String(timeInMillis % 1000).padStart(3, '0');
+    const milliseconds = String(timeInMillis % 1000).padStart(3, '0').slice(0, 2);
     const seconds = String(Math.floor((timeInMillis / 1000) % 60)).padStart(2, '0');
     const minutes = String(Math.floor((timeInMillis / (1000 * 60)) % 60)).padStart(2, '0');
     return (

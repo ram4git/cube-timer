@@ -5,7 +5,7 @@ import { useState, useMemo, useEffect } from 'react'; // Import useEffect
 
 // Helper function to format time, can be moved to a utils file if needed
 const formatTimeDisplay = (timeInMillis: number): string => {
-  const milliseconds = String(timeInMillis % 1000).padStart(3, '0').slice(0, 3); // Get first three digits for MS
+  const milliseconds = String(timeInMillis % 1000).padStart(3, '0').slice(0, 2); // Get first three digits for MS
   const seconds = String(Math.floor((timeInMillis / 1000) % 60)).padStart(2, '0');
   const minutes = String(Math.floor((timeInMillis / (1000 * 60)) % 60)).padStart(2, '0');
   return `${minutes}:${seconds}:${milliseconds}`;
