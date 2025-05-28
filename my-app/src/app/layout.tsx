@@ -1,7 +1,5 @@
 'use client'; // This component now uses useEffect, so it must be a client component
 
-import type { Metadata } from "next";
-import "./globals.css";
 import { useEffect } from 'react'; // Import useEffect
 
 // export const metadata: Metadata = { // Cannot use metadata export in a client component. Manage dynamically if needed.
@@ -19,7 +17,7 @@ export default function RootLayout({
     document.title = "Cuber Timer App";
     const metaDescription = document.querySelector('meta[name="description"]');
     if (metaDescription) {
-      metaDescription.setAttribute('content', 'A simple timer app for speedcubers, installable as a PWA.');
+      (metaDescription as HTMLMetaElement).setAttribute('content', 'A simple timer app for speedcubers, installable as a PWA.');
     } else {
       const newMeta = document.createElement('meta');
       newMeta.name = 'description';
@@ -45,16 +43,17 @@ export default function RootLayout({
     let themeColorMeta = document.querySelector('meta[name="theme-color"]');
     if (!themeColorMeta) {
         themeColorMeta = document.createElement('meta');
-        themeColorMeta.name = 'theme-color';
+        (themeColorMeta as HTMLMetaElement).name = 'theme-color';
         document.head.appendChild(themeColorMeta);
     }
-    themeColorMeta.setAttribute('content', "#0000FF"); // Blue, as in manifest
+    (themeColorMeta as HTMLMetaElement).setAttribute('content', "#0000FF"); // Blue, as in manifest
 
   }, []);
 
   return (
     <html lang="en">
       <head>
+          <script src="https://cdn.tailwindcss.com"></script>
         {/* Static head elements can go here if needed, but manifest and dynamic meta are handled in useEffect */}
       </head>
       <body>{children}</body>

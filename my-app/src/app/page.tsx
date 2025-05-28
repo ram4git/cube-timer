@@ -5,7 +5,7 @@ import { useState, useMemo, useEffect } from 'react'; // Import useEffect
 
 // Helper function to format time, can be moved to a utils file if needed
 const formatTimeDisplay = (timeInMillis: number): string => {
-  const milliseconds = String(timeInMillis % 1000).padStart(3, '0').slice(0, 2); // Get first two digits for MS
+  const milliseconds = String(timeInMillis % 1000).padStart(3, '0').slice(0, 3); // Get first three digits for MS
   const seconds = String(Math.floor((timeInMillis / 1000) % 60)).padStart(2, '0');
   const minutes = String(Math.floor((timeInMillis / (1000 * 60)) % 60)).padStart(2, '0');
   return `${minutes}:${seconds}:${milliseconds}`;
@@ -62,40 +62,38 @@ export default function Page() {
   }, [clockedTimes]);
 
   return (
-    <div style={{ display: 'flex', height: '100vh', width: '100vw' }}>
-      <aside style={{
-        width: '200px', // Adjust width as needed
-        padding: '20px',
-        borderRight: '1px solid #ccc',
-        overflowY: 'auto', // Make it scrollable
-        backgroundColor: '#f0f0f0', // Light background for the list area
-      }}>
-        <h2>Clocked Times</h2>
-        {clockedTimes.length === 0 && <p>No times recorded yet.</p>}
-        <ul style={{ listStyleType: 'none', padding: 0 }}>
+    <div className="flex h-screen w-screen">
+      <aside
+        className="fixed top-0 left-0 w-[200px] p-5 overflow-y-auto bg-transparent pointer-events-none touch-none z-50"
+        style={{ background: 'transparent' }}
+      >
+        <button
+          className="pointer-events-auto mb-3 px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 transition"
+          onClick={() => setClockedTimes([])}
+          disabled={clockedTimes.length === 0}
+        >
+          Clear All
+        </button>
+        {clockedTimes.length === 0 && <p className="pointer-events-auto text-xs">No times recorded yet.</p>}
+        <ul className="list-none p-0 pointer-events-auto">
           {clockedTimes.map((time, index) => (
-            <li key={index} style={{
-              fontSize: '1.2rem', // Smaller font size
-              padding: '5px 0',
-              color: time === smallestTime ? 'green' : 'inherit', // Highlight smallest time
-              fontWeight: time === smallestTime ? 'bold' : 'normal',
-            }}>
-              {formatTimeDisplay(time)}
-              {time === smallestTime && <span style={{ marginLeft: '10px', color: 'green', fontSize: '0.9rem' }}>(Record Time!)</span>}
-            </li>
+        <li
+          key={index}
+          className={
+            `text-[1.2rem] py-1 ${time === smallestTime ? 'text-green-600 font-bold' : ''} pointer-events-auto bg-gray-100/90 shadow-sm p-2 rounded-md mb-2 transition-colors duration-300 hover:bg-gray-200`
+          }
+        >
+          {formatTimeDisplay(time)}
+          {time === smallestTime && (
+            <span className="ml-2 text-green-600 text-[0.6rem] pointer-events-auto animate animate-pulse">(⭐️)</span>
+          )}
+        </li>
           ))}
         </ul>
       </aside>
-      <main style={{
-        flexGrow: 1,
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: timerIsRunning ? 'blue' : 'gray',
-        transition: 'background-color 0.3s ease', // Smooth transition
-        position: 'relative', // Needed if you want to position elements absolutely within main
-      }}>
+      <main
+        className={`h-screen w-screen flex flex-col items-center justify-center flex-grow transition-colors duration-300 relative ${timerIsRunning ? 'bg-blue-600' : 'bg-gray-500'}`}
+      >
         <Timer onStateChange={handleTimerStateChange} />
       </main>
     </div>
