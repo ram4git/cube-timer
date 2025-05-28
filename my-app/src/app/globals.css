@@ -1,0 +1,11 @@
+/* Remove default styles */
+html,
+body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body > div:first-child { /* Target the Next.js root div */
+  height: 100%;
+}
