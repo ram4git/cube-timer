@@ -9,4 +9,5 @@ tags:
   - deepsite
 ---
 
-Check out the configuration reference at https://huggingface.co/docs/hub/spaces-config-reference
+[Demo Site on Huggin Face](https://huggingface.co/spaces/irraju/cuber-timer)
+[Demo Site on Vercel](https://cube-timer-free.vercel.app/)
