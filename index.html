@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cuber Timer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;700&family=Roboto+Mono:wght@400;700&display=swap');
+        
+        .touch-indicator {
+            position: absolute;
+            border-radius: 50%;
+            pointer-events: none;
+            transform: translate(-50%, -50%);
+            opacity: 0.7;
+        }
+        
+        .touch-indicator-outer {
+            border: 2px solid rgba(255, 255, 255, 0.5);
+            background: rgba(255, 255, 255, 0.1);
+        }
+        
+        .touch-indicator-inner {
+            background: rgba(255, 255, 255, 0.3);
+        }
+        
+        body {
+            font-family: 'Roboto Mono', monospace;
+            background-color: #1a202c;
+            color: white;
+            height: 100vh;
+            overflow: hidden;
+        }
+        
+        .timer-display {
+            font-family: 'Fira Code', monospace;
+            font-size: 30vw;
+            letter-spacing: -0.05em;
+            font-weight: 700;
+        }
+        
+        @media (max-width: 640px) {
+            .timer-display {
+                font-size: 35vw;
+            }
+        }
+        
+        .instructions {
+            max-width: 600px;
+        }
+        
+        #previous-times::-webkit-scrollbar {
+            width: 4px;
+        }
+        
+        #previous-times::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        
+        #previous-times::-webkit-scrollbar-thumb {
+            background-color: rgba(255,255,255,0.2);
+            border-radius: 2px;
+        }
+    </style>
+</head>
+<body class="flex flex-col items-center justify-center p-4 relative">
+    <div id="touch-indicators"></div>
+    <div class="text-center mb-8">
+        <h1 class="text-3xl md:text-4xl font-bold mb-2 text-blue-400">CUBER TIMER</h1>
+        <p class="text-gray-400 mb-6">Press any two non-adjacent keys or touch points to start/stop</p>
+        
+        <div class="timer-display font-mono mb-8" id="timer">0.00</div>
+        <div class="text-gray-400 text-xl mb-4" id="last-time"></div>
+    </div>
+    <div class="fixed right-0 top-0 h-full w-32 bg-gray-900 bg-opacity-30 p-4 overflow-y-auto" id="previous-times"></div>
+    
+    <div class="text-gray-500 text-sm">
+        <p>Keys pressed: <span id="pressed-keys" class="font-mono">None</span></p>
+        <p class="mt-2">Status: <span id="status" class="font-semibold text-yellow-400">Waiting to start</span></p>
+    </div>
+
+    <script>
+        // QWERTY keyboard layout adjacency map
+        const adjacencyMap = {
+            '`': ['1', 'Tab'],
+            '1': ['`', '2', 'q'],
+            '2': ['1', '3', 'q', 'w'],
+            '3': ['2', '4', 'w', 'e'],
+            '4': ['3', '5', 'e', 'r'],
+            '5': ['4', '6', 'r', 't'],
+            '6': ['5', '7', 't', 'y'],
+            '7': ['6', '8', 'y', 'u'],
+            '8': ['7', '9', 'u', 'i'],
+            '9': ['8', '0', 'i', 'o'],
+            '0': ['9', '-', 'o', 'p'],
+            '-': ['0', '=', 'p', '['],
+            '=': ['-', 'Backspace', '[', ']'],
+            
+            'q': ['1', '2', 'w', 'a', 'Tab', 'CapsLock'],
+            'w': ['2', '3', 'q', 'e', 'a', 's'],
+            'e': ['3', '4', 'w', 'r', 's', 'd'],
+            'r': ['4', '5', 'e', 't', 'd', 'f'],
+            't': ['5', '6', 'r', 'y', 'f', 'g'],
+            'y': ['6', '7', 't', 'u', 'g', 'h'],
+            'u': ['7', '8', 'y', 'i', 'h', 'j'],
+            'i': ['8', '9', 'u', 'o', 'j', 'k'],
+            'o': ['9', '0', 'i', 'p', 'k', 'l'],
+            'p': ['0', '-', 'o', '[', 'l', ';'],
+            
+            'a': ['q', 'w', 's', 'z', 'CapsLock', 'Shift'],
+            's': ['w', 'e', 'a', 'd', 'z', 'x'],
+            'd': ['e', 'r', 's', 'f', 'x', 'c'],
+            'f': ['r', 't', 'd', 'g', 'c', 'v'],
+            'g': ['t', 'y', 'f', 'h', 'v', 'b'],
+            'h': ['y', 'u', 'g', 'j', 'b', 'n'],
+            'j': ['u', 'i', 'h', 'k', 'n', 'm'],
+            'k': ['i', 'o', 'j', 'l', 'm', ','],
+            'l': ['o', 'p', 'k', ';', ',', '.'],
+            
+            'z': ['a', 's', 'x', 'Shift'],
+            'x': ['s', 'd', 'z', 'c'],
+            'c': ['d', 'f', 'x', 'v'],
+            'v': ['f', 'g', 'c', 'b'],
+            'b': ['g', 'h', 'v', 'n'],
+            'n': ['h', 'j', 'b', 'm'],
+            'm': ['j', 'k', 'n', ','],
+            ',': ['k', 'l', 'm', '.'],
+            '.': ['l', ';', ',', '/'],
+            '/': [';', '.', 'Shift']
+        };
+
+        // State variables
+        let timer = null;
+        let startTime = 0;
+        let currentTime = 0;
+        let running = false;
+        let pressedKeys = new Set();
+        let touchPoints = new Map();
+        let lastTime = 0;
+        let previousTimes = [];
+        let recordTime = Infinity;
+        
+        // DOM elements
+        const timerDisplay = document.getElementById('timer');
+        const pressedKeysDisplay = document.getElementById('pressed-keys');
+        const statusDisplay = document.getElementById('status');
+        // Format time to 2 decimal places
+        function formatTime(ms) {
+            return (ms / 1000).toFixed(2);
+        }
+        
+        // Update the timer display
+        function updateTimer() {
+            currentTime = Date.now() - startTime;
+            timerDisplay.textContent = formatTime(currentTime);
+        }
+        
+        // Calculate distance between two points
+        function getDistance(x1, y1, x2, y2) {
+            return Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
+        }
+        
+        // Check if two touch points are far enough apart
+        function areTouchesFarEnough(touches) {
+            if (touches.length < 2) return false;
+            
+            // Get all pairs of touches and check if any are at least 100px apart
+            for (let i = 0; i < touches.length; i++) {
+                for (let j = i + 1; j < touches.length; j++) {
+                    const t1 = touches[i];
+                    const t2 = touches[j];
+                    if (getDistance(t1.clientX, t1.clientY, t2.clientX, t2.clientY) > 100) {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        }
+        
+        // Update touch indicators
+        function updateTouchIndicators() {
+            const container = document.getElementById('touch-indicators');
+            container.innerHTML = '';
+            
+            touchPoints.forEach((pos, identifier) => {
+                // Outer circle
+                const outer = document.createElement('div');
+                outer.className = 'touch-indicator touch-indicator-outer';
+                outer.style.width = '60px';
+                outer.style.height = '60px';
+                outer.style.left = `${pos.x}px`;
+                outer.style.top = `${pos.y}px`;
+                
+                // Inner circle
+                const inner = document.createElement('div');
+                inner.className = 'touch-indicator touch-indicator-inner';
+                inner.style.width = '30px';
+                inner.style.height = '30px';
+                inner.style.left = `${pos.x}px`;
+                inner.style.top = `${pos.y}px`;
+                
+                container.appendChild(outer);
+                container.appendChild(inner);
+            });
+        }
+        
+        // Check if two keys are non-adjacent
+        function areKeysNonAdjacent(key1, key2) {
+            // Convert to lowercase for case-insensitive comparison
+            key1 = key1.toLowerCase();
+            key2 = key2.toLowerCase();
+            
+            // If either key isn't in our adjacency map, assume they're not adjacent
+            if (!adjacencyMap[key1] || !adjacencyMap[key2]) {
+                return true;
+            }
+            
+            // Check if key2 is adjacent to key1
+            return !adjacencyMap[key1].includes(key2);
+        }
+        
+        // Check if current pressed keys meet the start/stop condition
+        function checkStartStopCondition() {
+            const keys = Array.from(pressedKeys);
+            
+            // Need at least two keys pressed
+            if (keys.length < 2) return false;
+            
+            // Check all pairs of pressed keys to find at least one non-adjacent pair
+            for (let i = 0; i < keys.length; i++) {
+                for (let j = i + 1; j < keys.length; j++) {
+                    if (areKeysNonAdjacent(keys[i], keys[j])) {
+                        return true;
+                    }
+                }
+            }
+            
+            return false;
+        }
+        
+        // Start the timer
+        function startTimer() {
+            if (running) return;
+            
+            startTime = Date.now();
+            timer = setInterval(updateTimer, 10);
+            running = true;
+            statusDisplay.textContent = 'Running';
+            statusDisplay.className = 'font-semibold text-green-400';
+        }
+        
+        // Stop the timer
+        function stopTimer() {
+            if (!running) return;
+            
+            clearInterval(timer);
+            running = false;
+            lastTime = currentTime;
+            statusDisplay.textContent = 'Stopped';
+            statusDisplay.className = 'font-semibold text-red-400';
+            
+            // Add to previous times
+            previousTimes.push(lastTime);
+            
+            // Update record if this is the fastest time
+            if (lastTime < recordTime) {
+                recordTime = lastTime;
+            }
+            
+            // Update displays
+            updateLastTimeDisplay();
+            updatePreviousTimesDisplay();
+            
+            // Animate the timer display
+            timerDisplay.classList.add('animate-pulse');
+            setTimeout(() => {
+                timerDisplay.classList.remove('animate-pulse');
+            }, 1000);
+        }
+        
+        // Update last time display
+        function updateLastTimeDisplay() {
+            document.getElementById('last-time').textContent = `Last: ${formatTime(lastTime)}`;
+        }
+        
+        // Update previous times display
+        function updatePreviousTimesDisplay() {
+            const container = document.getElementById('previous-times');
+            container.innerHTML = '';
+            
+            // Sort times (fastest first)
+            const sortedTimes = [...previousTimes].sort((a, b) => a - b);
+            
+            sortedTimes.forEach(time => {
+                const timeElement = document.createElement('div');
+                timeElement.textContent = formatTime(time);
+                timeElement.className = 'py-1 text-right text-sm';
+                
+                // Highlight record time
+                if (time === recordTime) {
+                    timeElement.className += ' text-yellow-400 font-bold';
+                }
+                
+                container.appendChild(timeElement);
+            });
+        }
+        
+        // Handle key down events
+        function handleKeyDown(e) {
+            // Ignore modifier keys
+            if (['Control', 'Shift', 'Alt', 'Meta', 'CapsLock', 'Tab', 'Backspace'].includes(e.key)) {
+                return;
+            }
+            
+            // Add key to pressed keys set
+            pressedKeys.add(e.key);
+            
+            // Update pressed keys display
+            pressedKeysDisplay.textContent = Array.from(pressedKeys).join(', ');
+            
+            // Check if we should start/stop the timer
+            if (checkStartStopCondition()) {
+                if (running) {
+                    stopTimer();
+                } else {
+                    startTimer();
+                }
+            }
+        }
+        
+        // Handle key up events
+        function handleKeyUp(e) {
+            // Remove key from pressed keys set
+            pressedKeys.delete(e.key);
+            
+            // Update pressed keys display
+            pressedKeysDisplay.textContent = pressedKeys.size > 0 ? Array.from(pressedKeys).join(', ') : 'None';
+            
+            // If no keys are pressed and timer was just started, change status
+            if (pressedKeys.size === 0 && running) {
+                statusDisplay.textContent = 'Solving...';
+                statusDisplay.className = 'font-semibold text-blue-400';
+            }
+        }
+        
+        // Touch event handlers
+        function handleTouchStart(e) {
+            e.preventDefault();
+            
+            // Add all new touches
+            Array.from(e.changedTouches).forEach(touch => {
+                touchPoints.set(touch.identifier, {
+                    x: touch.clientX,
+                    y: touch.clientY
+                });
+            });
+            
+            updateTouchIndicators();
+            
+            // Check if we should start/stop the timer
+            if (areTouchesFarEnough(Array.from(e.touches))) {
+                if (running) {
+                    stopTimer();
+                } else {
+                    startTimer();
+                }
+            }
+        }
+        
+        function handleTouchMove(e) {
+            e.preventDefault();
+            
+            // Update touch positions
+            Array.from(e.changedTouches).forEach(touch => {
+                if (touchPoints.has(touch.identifier)) {
+                    touchPoints.set(touch.identifier, {
+                        x: touch.clientX,
+                        y: touch.clientY
+                    });
+                }
+            });
+            
+            updateTouchIndicators();
+        }
+        
+        function handleTouchEnd(e) {
+            e.preventDefault();
+            
+            // Remove ended touches
+            Array.from(e.changedTouches).forEach(touch => {
+                touchPoints.delete(touch.identifier);
+            });
+            
+            updateTouchIndicators();
+        }
+        
+        // Initialize
+        document.addEventListener('keydown', handleKeyDown);
+        document.addEventListener('keyup', handleKeyUp);
+        document.addEventListener('touchstart', handleTouchStart, { passive: false });
+        document.addEventListener('touchmove', handleTouchMove, { passive: false });
+        document.addEventListener('touchend', handleTouchEnd, { passive: false });
+        
+        // Reset timer when clicking on it
+        timerDisplay.addEventListener('click', () => {
+            if (!running) {
+                timerDisplay.textContent = '0.00';
+                lastTime = 0;
+                document.getElementById('last-time').textContent = '';
+                statusDisplay.textContent = 'Waiting to start';
+                statusDisplay.className = 'font-semibold text-yellow-400';
+                previousTimes = [];
+                recordTime = Infinity;
+                document.getElementById('previous-times').innerHTML = '';
+            }
+        });
+        
+    </script>
+    <div class="fixed bottom-4 left-0 right-0 text-center text-gray-500 text-sm">
+        <a href="https://twitter.com/irraju" target="_blank" class="hover:text-blue-400">@irraju</a>
+    </div>
+<p style="border-radius: 8px; text-align: center; font-size: 12px; color: #fff; margin-top: 16px;position: fixed; left: 8px; bottom: 8px; z-index: 10; background: rgba(0, 0, 0, 0.8); padding: 4px 8px;">Made with <img src="https://enzostvs-deepsite.hf.space/logo.svg" alt="DeepSite Logo" style="width: 16px; height: 16px; vertical-align: middle;display:inline-block;margin-right:3px;filter:brightness(0) invert(1);"><a href="https://enzostvs-deepsite.hf.space" style="color: #fff;text-decoration: underline;" target="_blank" >DeepSite</a> - 🧬 <a href="https://enzostvs-deepsite.hf.space?remix=irraju/cuber-timer" style="color: #fff;text-decoration: underline;" target="_blank" >Remix</a></p></body>
+</html>
